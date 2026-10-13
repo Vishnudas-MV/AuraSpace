@@ -32,10 +32,21 @@ if (process.env.NODE_ENV !== "test") {
   app.use(morgan(process.env.NODE_ENV === "production" ? "combined" : "dev"));
 }
 
+import mongoose from "mongoose";
+
 // Health check endpoint
 app.get("/health", (_req: Request, res: Response) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus =
+    dbState === 1
+      ? "connected"
+      : dbState === 2
+      ? "connecting"
+      : "disconnected";
+
   res.status(200).json({
     status: "healthy",
+    database: dbStatus,
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     environment: process.env.NODE_ENV || "development",
@@ -43,9 +54,18 @@ app.get("/health", (_req: Request, res: Response) => {
 });
 
 app.get("/api/health", (_req: Request, res: Response) => {
+  const dbState = mongoose.connection.readyState;
+  const dbStatus =
+    dbState === 1
+      ? "connected"
+      : dbState === 2
+      ? "connecting"
+      : "disconnected";
+
   res.status(200).json({
     status: "healthy",
     service: "Mental Wellness & Emotion Diary API",
+    database: dbStatus,
     version: "1.0.0",
     timestamp: new Date().toISOString(),
   });
@@ -63,22 +83,23 @@ app.use(notFoundHandler);
 // Global Centralized Error Handler
 app.use(errorHandler);
 
-// Start server after connecting to database
-const startServer = async (): Promise<void> => {
-  try {
-    await connectDB();
-    app.listen(Number(PORT), "0.0.0.0", () => {
-      console.log(`=========================================`);
-      console.log(` Mental Wellness API Server is running!`);
-      console.log(` Port: ${PORT}`);
-      console.log(` Mode: ${process.env.NODE_ENV || "development"}`);
-      console.log(` Health: http://localhost:${PORT}/health`);
-      console.log(`=========================================`);
-    });
-  } catch (error) {
-    console.error("Failed to initialize server:", error);
-    process.exit(1);
-  }
+// Start server immediately to bind port on Render/cloud, then connect to MongoDB
+const startServer = (): void => {
+  const portNumber = Number(PORT) || 5000;
+  app.listen(portNumber, "0.0.0.0", () => {
+    console.log(`=========================================`);
+    console.log(` AuraSpace API Server is running!`);
+    console.log(` Port: ${portNumber}`);
+    console.log(` Host: 0.0.0.0`);
+    console.log(` Mode: ${process.env.NODE_ENV || "development"}`);
+    console.log(` Health: http://0.0.0.0:${portNumber}/health`);
+    console.log(`=========================================`);
+  });
+
+  // Connect to database asynchronously with automatic retry
+  connectDB().catch((err) => {
+    console.error("[Database] Initial connection error:", err?.message || err);
+  });
 };
 
 // Execute if run directly
