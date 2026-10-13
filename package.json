@@ -1,0 +1,13 @@
+{
+  "name": "auraspace-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "AuraSpace - Emotion Diary & Mental Wellness Platform",
+  "scripts": {
+    "build": "npm --prefix backend run build",
+    "start": "npm --prefix backend start",
+    "dev": "npm --prefix backend run dev",
+    "install:backend": "npm --prefix backend install",
+    "postinstall": "npm --prefix backend install"
+  }
+}
